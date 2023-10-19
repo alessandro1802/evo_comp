@@ -65,4 +65,58 @@ class Solver():
             best_route.append(next_city)
             unvisited_cities.remove(next_city)
         return best_route
-        
+
+    def greedy_weighted(self):
+        # TODO
+        pass
+
+    def calculateStats(self, solutions):
+        best_sol_idx = np.argmin(solutions)
+        min_result = np.amin(solutions)
+        avg_result = np.mean(solutions)
+        max_result = np.amax(solutions)
+        return min_result, avg_result, max_result, best_sol_idx
+    
+    def writeRouteToCSV(self, route, outputPath):
+        with open(outputPath, 'w') as f:
+            write = csv.writer(f)
+            write.writerows(np.array(route)[:, np.newaxis])
+
+    def solve(self):
+        algorithm = "greedy_2_regret"
+        solutions = []
+        evaluations = []
+        # Get solutions and evaluations
+        for startNode in self.cities:
+            solutions.append(self.greedy_2_regret(startNode))
+            evaluations.append(self.getTotalDistance(solution))
+        # Get and print stats
+        min_result, avg_result, max_result, best_sol_idx = self.calculateStats(solutions)
+        print(f"MIN {min_result} AVG {avg_result} MAX {max_result}")
+        # Save best solution
+        best_sol = solutions[best_sol_idx]
+        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
+        self.writeRouteToCSV(best_sol, outputPath)
+
+        algorithm = "greedy_weighted"
+        solutions = []
+        evaluations = []
+        # Get solutions and evaluations
+        for startNode in self.cities:
+            solutions.append(self.greedy_weighted(startNode))
+            evaluations.append(self.getTotalDistance(solution))
+        # Get and print stats
+        min_result, avg_result, max_result, best_sol_idx = self.calculateStats(solutions)
+        print(f"MIN {min_result} AVG {avg_result} MAX {max_result}")
+        # Save best solution
+        best_sol = solutions[best_sol_idx]
+        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
+        self.writeRouteToCSV(best_sol, outputPath)
+
+
+if __name__ == "__main__":
+    instancesPath = "../instances/"
+    outputPath = "./solutions/"
+    for instancePath in glob(os.path.join(instancesPath, "*.csv")):
+        solver = Solver(instancePath, outputPath)
+        solver.solve()
