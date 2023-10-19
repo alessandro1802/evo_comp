@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 
 instancesPath = "./instances/"
 solutionsPath = "./lab2/solutions/"
+outputPath = "./lab2/plots/"
 
 colors = ['red', 'green', 'blue']
 
@@ -44,4 +45,4 @@ for instancePath in glob(os.path.join(instancesPath, "*.csv")):
         ax.set(xlabel='x', ylabel='y')
         ax.label_outer()
     # Save
-    fig.savefig(f"./{instanceName}.jpg")
+    fig.savefig(os.path.join(outputPath, instanceName, "jpg"))
