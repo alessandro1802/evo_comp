@@ -11,9 +11,20 @@ class Solver():
         self.targetSolutionSize = round(len(self.cities) / 2)
         print(instanceName)
 
-    def readInstance(self, instancePath):
+    def readInstance(self, instancePath : str):
         instanceName = instancePath.split('/')[-1].split('.')[0]
-        # TODO
+        with open(instancePath, 'r') as f:
+            reader = csv.reader(f, delimiter=';')
+            data = list(reader)
+
+        data = np.array(data).astype(int)
+
+        coords = data[:, :2]
+        cities = np.array(range(len(coords)))
+        costs = data[:, 2]
+
+        distances = np.round(np.sqrt(np.sum((coords[:, None, :] - coords[None, :, :]) ** 2, axis=-1))).astype(float)
+
         return instanceName, cities, costs, distances
         
     def getTotalEdgeCost(self, node_i, node_j):
