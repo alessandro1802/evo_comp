@@ -55,42 +55,40 @@ class Solver():
             edges = list(np.stack([best_route, tmp]).T)
             best_regret = -np.inf
             for city in unvisited_cities:
-                # # Top 2 least costly insertions
-                # # [1st best insertion cost, 2nd best insersion cost]
-                # min_2_costs = [np.inf, np.inf]
-                # for i, j in edges:
-                # # Calculate cost of inserting the city between i and j
-                #     insertionCost = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
-                #     if insertionCost < min_2_costs[0]:
-                #         min_2_costs[1] = min_2_costs[0]
-                #         min_2_costs[0] = insertionCost
-                #         # Insert new node instead of edge with min cost of insertion
-                #         current_best_position = best_route.index(j)
-                #     elif insertionCost < min_2_costs[1]:
-                #         min_2_costs[1] = insertionCost
+                # Top 2 least costly insertions
+                min_costs = [np.inf, np.inf]
+                for i, j in edges:
+                    # Calculate cost of inserting the city between i and j
+                    insertionCost = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
+                    if insertionCost < min_costs[0]:
+                        min_costs[1] = min_costs[0]
+                        min_costs[0] = insertionCost
+                        # Insert new node instead of edge with min cost of insertion
+                        current_best_position = best_route.index(j)
+                    elif insertionCost < min_costs[1]:
+                        min_costs[1] = insertionCost
+                regret = min_costs[1] - min_costs[0]
+                if regret > best_regret:
+                    best_regret = regret
+                    new_city = city
+                    best_position = current_best_position
 
-                # 2 subsequent edges
-                for edge_idx in range(len(edges[:-1])):
-                    i, j = edges[edge_idx]
-                    insertionCost_0 = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
+                # # 2 subsequent edges
+                # for edge_idx in range(len(edges[:-1])):
+                #     i, j = edges[edge_idx]
+                #     insertionCost_0 = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
 
-                    i, j = edges[edge_idx + 1]
-                    insertionCost_1 = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
+                #     i, j = edges[edge_idx + 1]
+                #     insertionCost_1 = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
                     
-                    regret = abs(insertionCost_0 - insertionCost_1)
+                #     regret = abs(insertionCost_0 - insertionCost_1)
                     
-                    if regret > best_regret:
-                        best_regret = regret
-                        new_city = city
-                        best_location = np.argmin([insertionCost_0, insertionCost_1])
-                        best_position = edges[edge_idx + best_location][0]
-
-                # # Top 2 least costly insertions
-                # regret = min_2_costs[1] - min_2_costs[0]
-                # if regret > best_regret:
-                #     best_regret = regret
-                #     new_city = city
-                #     best_position = current_best_position
+                #     if regret > best_regret:
+                #         best_regret = regret
+                #         new_city = city
+                #         # best_location = np.argmin([insertionCost_0, insertionCost_1])
+                #         best_location = np.argmax([insertionCost_0, insertionCost_1])
+                #         best_position = edges[edge_idx + best_location][0]
                     
             best_route.insert(best_position, new_city)
             unvisited_cities.remove(new_city)
@@ -113,43 +111,44 @@ class Solver():
             best_regret = -np.inf
             for city in unvisited_cities:
                 # Top 2 least costly insertions
-                # [1st best insertion cost, 2nd best insersion cost]
-                # min_2_costs = [np.inf, np.inf]
-                # for i, j in edges:
-                # # Calculate cost of inserting the city between i and j
-                #     insertionCost = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
-                #     if insertionCost < min_2_costs[0]:
-                #         min_2_costs[1] = min_2_costs[0]
-                #         min_2_costs[0] = insertionCost
-                #         current_best_position = best_route.index(j)
-                #     elif insertionCost < min_2_costs[1]:
-                #         min_2_costs[1] = insertionCost
+                min_costs = [np.inf, np.inf]
+                for i, j in edges:
+                    # Calculate cost of inserting the city between i and j
+                    insertionCost = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
+                    if insertionCost < min_costs[0]:
+                        min_costs[1] = min_costs[0]
+                        min_costs[0] = insertionCost
+                        # Insert new node instead of edge with min cost of insertion
+                        current_best_position = best_route.index(j)
+                    elif insertionCost < min_costs[1]:
+                        min_costs[1] = insertionCost
+                        current_best_position = best_route.index(j)
+                regret = min_costs[1] - min_costs[0]
+                regret = weights[0] * regret - weights[1] * min_costs[0]
+                if regret > best_regret:
+                    best_regret = regret
+                    new_city = city
+                    best_position = current_best_position
 
-                # 2 subsequent edges
-                for edge_idx in range(len(edges[:-1])):
-                    i, j = edges[edge_idx]
-                    insertionCost_0 = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
+                # # 2 subsequent edges
+                # for edge_idx in range(len(edges[:-1])):
+                #     i, j = edges[edge_idx]
+                #     insertionCost_0 = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
 
-                    i, j = edges[edge_idx + 1]
-                    insertionCost_1 = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
+                #     i, j = edges[edge_idx + 1]
+                #     insertionCost_1 = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
 
-                    min_cost = min(insertionCost_0, insertionCost_1)
-                    regret = abs(insertionCost_0 - insertionCost_1)
-                    regret = weights[0] * regret - weights[1]* min_cost
+                #     min_cost = min(insertionCost_0, insertionCost_1)
+                #     regret = abs(insertionCost_0 - insertionCost_1)
+                #     regret = weights[0] * regret - weights[1]* min_cost
                     
-                    if regret > best_regret:
-                        best_regret = regret
-                        new_city = city
-                        best_location = np.argmin([insertionCost_0, insertionCost_1])
-                        best_position = edges[edge_idx + best_location][0]
+                #     if regret > best_regret:
+                #         best_regret = regret
+                #         new_city = city
+                #         # best_location = np.argmin([insertionCost_0, insertionCost_1])
+                #         best_location = np.argmax([insertionCost_0, insertionCost_1])
+                #         best_position = edges[edge_idx + best_location][0]
 
-                # Top 2 least costly insertions
-                # regret = min_2_costs[1] - min_2_costs[0]
-                # if regret > best_regret:
-                #     best_regret = regret
-                #     new_city = city
-                #     best_position = current_best_position
-                    
             best_route.insert(best_position, new_city)
             unvisited_cities.remove(new_city)
         return best_route
