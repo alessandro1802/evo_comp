@@ -2,6 +2,7 @@ import csv
 import os
 from glob import glob
 import numpy as np
+from tqdm import tqdm
 
 
 class Solver():
@@ -10,9 +11,6 @@ class Solver():
         self.outputPath = os.path.join(outputPath, instanceName)
         self.targetSolutionSize = round(len(self.cities) / 2)
         print(instanceName)
-        # print(self.cities)
-        # print(self.costs)
-        # print(self.distances)
 
     def readInstance(self, instancePath : str):
         instanceName = instancePath.split('/')[-1].split('.')[0]
@@ -40,9 +38,9 @@ class Solver():
         # Return to the starting city
         total += self.getTotalEdgeCost(route[-1], route[0])
         return total
-
+    
     def greedy_2_regret(self, startNode):        
-        # Select 2nd initial city
+        # Select 2nd initial city (greedily nearest)
         minTotalCost = np.inf
         for j in self.cities:
             if j != startNode:
@@ -51,31 +49,30 @@ class Solver():
                     bestNode = j
         best_route = [startNode, bestNode]
         # Greedily build the TSP route
-        min_distance = self.getTotalDistance(best_route)
         unvisited_cities = list(set(self.cities) - set(best_route))
-        regrests = dict()
         while len(best_route) < self.targetSolutionSize:
-            min_regret = np.inf
+            max_regret = -np.inf
             for city in unvisited_cities:
-                # Check if reagret has already been calculated
-                if city in regrests:
-                    regret = regrests[city]
-                else:
-                    totalCost_i = self.getTotalEdgeCost(best_route[0], city)
-                    totalCost_j = self.getTotalEdgeCost(best_route[1], city)
+                tmp1 = range(len(best_route))
+                tmp2 = np.roll(range(len(best_route)), 1)
+                edges = np.stack([tmp1, tmp2]).T
+                for i, j in edges:
+                    totalCost_i = self.getTotalEdgeCost(best_route[i], city)
+                    totalCost_j = self.getTotalEdgeCost(best_route[j], city)
                     minDiff = min(totalCost_i, totalCost_j)
-                    
+                        
                     regret_i = totalCost_i - minDiff
                     regret_j = totalCost_j - minDiff
                     regret = regret_i + regret_j
-                    
-                if regret < min_regret:
-                    min_regret = regret
-                    next_city = city
-                # Store the regret
-                else:
-                    regrests[city] = regret
-            best_route.append(next_city)
+                
+                    if max_regret < regret:
+                        if regret_i == 0:
+                            prev_city_idx = i
+                        else: 
+                            prev_city_idx = j
+                        max_regret = regret
+                        next_city = city
+            best_route.insert(prev_city_idx, next_city)
             unvisited_cities.remove(next_city)
         return best_route
 
@@ -95,17 +92,15 @@ class Solver():
         return best_city, second_best
 
     def greedy_weighted(self, startNode, weight_obj_funct, weight_2_regret):
-        # Select 2nd initial city
+        # Select 2nd initial city (greedily nearest)
         minTotalCost = np.inf
         for j in self.cities:
             if j != startNode:
-                nodeCost = self.distances[startNode, j] + self.costs[j]
+                nodeCost = self.getTotalEdgeCost(startNode, j)
                 if nodeCost < minTotalCost:
                     bestNode = j
         best_route = [startNode, bestNode]
-
         # Greedily build the TSP route
-        min_distance = self.getTotalDistance(best_route)
         unvisited_cities = list(set(self.cities) - set(best_route))
         regrests = dict()
         while len(best_route) < self.targetSolutionSize:
@@ -175,7 +170,7 @@ class Solver():
         solutions = []
         evaluations = []
         # Get solutions and evaluations
-        for startNode in self.cities:
+        for startNode in tqdm(self.cities):
             solutions.append(self.greedy_2_regret(startNode))
             evaluations.append(self.getTotalDistance(solutions[-1]))
         # Get and print stats
@@ -192,7 +187,7 @@ class Solver():
         # Get solutions and evaluations
         for startNode in self.cities:
             solutions.append(self.greedy_weighted(startNode, weight_obj_funct=1, weight_2_regret=1))
-            evaluations.append(self.getTotalDistance(self.greedy_weighted(startNode, weight_obj_funct=1, weight_2_regret=1)))
+            evaluations.append(self.getTotalDistance(solutions[-1])
         # Get and print stats
         min_result, avg_result, max_result, best_sol_idx = self.calculateStats(evaluations)
         print(f"MIN {min_result} AVG {avg_result} MAX {max_result}")
