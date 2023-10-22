@@ -79,9 +79,76 @@ class Solver():
             unvisited_cities.remove(next_city)
         return best_route
 
-    def greedy_weighted(self):
-        # TODO
-        pass
+    def get_closest(self, route, vertex):
+        best_dist = np.inf
+        for v in route:
+            if self.distances[vertex, v] < best_dist and vertex not in route:
+                best_dist = self.distances[vertex, v]
+                best_city = v
+        return best_city
+
+    def get_closest_and_second_closest(self, best_route, vertex):
+        best_city = self.get_closest(best_route, vertex)
+        best_route2 = best_route.copy()
+        best_route2.remove(best_city)
+        second_best = self.get_closest(best_route2, vertex)
+        return best_city, second_best
+
+    def greedy_weighted(self, startNode, weight_obj_funct, weight_2_regret):
+        # Select 2nd and 3rd initial city
+        minTotalCost = np.inf
+        for j in self.cities:
+            if j != startNode:
+                nodeCost = self.distances[startNode, j] + self.costs[j]
+                if nodeCost < minTotalCost:
+                    bestNode = j
+        best_route = [startNode, bestNode]
+
+        # Greedily build the TSP route
+        min_distance = self.getTotalDistance(best_route)
+        unvisited_cities = list(set(self.cities) - set(best_route))
+        regrests = dict()
+        while len(best_route) < self.targetSolutionSize:
+        # while unvisited_cities:
+            max_regret = 0
+            for city in unvisited_cities:
+                # Check if reagret has already been calculated
+                if city in regrests:
+                    regret = regrests[city]
+                else:
+                    # EDIT START
+                    best_city, second_best = self.get_closest_and_second_closest(best_route, city)
+                    first_loc_cost = self.getTotalEdgeCost(city, best_city)
+                    second_loc_cost = self.getTotalEdgeCost(city, second_best)
+
+                    best_index = best_route.index(best_city)
+                    second_index = best_route.index(second_best)
+
+                    temp_route = best_route.copy()
+                    if best_index+1 < len(temp_route):
+                        temp_route.insert(best_index+1, city)
+                    else:
+                        temp_route.append(city)
+                    first_loc_change = self.getTotalDistance(temp_route)
+
+                    temp_route.remove(city)
+                    if second_index+1 < len(temp_route):
+                        temp_route.insert(second_index+1, city)
+                    else:
+                        temp_route.append(city)
+                    second_loc_change = self.getTotalDistance(temp_route)
+                    
+                    # best change in the objective function = the smallest change
+                    regret = weight_2_regret * np.abs(first_loc_cost-second_loc_cost) - weight_obj_funct * np.abs(first_loc_change-second_loc_change)
+                if regret > max_regret:
+                    max_regret = regret
+                    next_city = city
+                else:
+                    regrests[city] = regret
+
+            best_route.append(next_city)
+            unvisited_cities.remove(next_city)
+        return best_route
 
     def calculateStats(self, evaluations):
         best_sol_idx = np.argmin(evaluations)
@@ -111,20 +178,20 @@ class Solver():
         outputPath = os.path.join(self.outputPath, algorithm + ".csv")
         self.writeRouteToCSV(best_sol, outputPath)
 
-        # algorithm = "greedy_weighted"
-        # solutions = []
-        # evaluations = []
-        # # Get solutions and evaluations
-        # for startNode in self.cities:
-        #     solutions.append(self.greedy_weighted(startNode))
-        #     evaluations.append(self.getTotalDistance(solution))
-        # # Get and print stats
-        # min_result, avg_result, max_result, best_sol_idx = self.calculateStats(solutions)
-        # print(f"MIN {min_result} AVG {avg_result} MAX {max_result}")
-        # # Save best solution
-        # best_sol = solutions[best_sol_idx]
-        # outputPath = os.path.join(self.outputPath, algorithm + ".csv")
-        # self.writeRouteToCSV(best_sol, outputPath)
+        algorithm = "greedy_weighted"
+        solutions = []
+        evaluations = []
+        # Get solutions and evaluations
+        for startNode in self.cities:
+            solutions.append(self.greedy_weighted(startNode, weight_obj_funct=1, weight_2_regret=1))
+            evaluations.append(self.getTotalDistance(self.greedy_weighted(startNode, weight_obj_funct=1, weight_2_regret=1)))
+        # Get and print stats
+        min_result, avg_result, max_result, best_sol_idx = self.calculateStats(evaluations)
+        print(f"MIN {min_result} AVG {avg_result} MAX {max_result}")
+        # Save best solution
+        best_sol = solutions[best_sol_idx]
+        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
+        self.writeRouteToCSV(best_sol, outputPath)
 
 
 if __name__ == "__main__":
