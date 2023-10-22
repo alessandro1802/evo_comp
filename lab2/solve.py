@@ -2,7 +2,9 @@ import csv
 import os
 from glob import glob
 import numpy as np
+
 from tqdm import tqdm
+from copy import deepcopy
 
 
 class Solver():
@@ -25,7 +27,7 @@ class Solver():
         coords = data[:, :2]
         distances = np.sum((coords[:, None, :] - coords[None, :, :]) ** 2, axis=-1)
         distances = np.sqrt(distances)
-        distances = np.round(distances).astype(float)
+        distances = np.round(distances).astype(int)
         return instanceName, cities, costs, distances
         
     def getTotalEdgeCost(self, node_i, node_j):
@@ -51,29 +53,48 @@ class Solver():
         # Greedily build the TSP route
         unvisited_cities = list(set(self.cities) - set(best_route))
         while len(best_route) < self.targetSolutionSize:
-            max_regret = -np.inf
+            tmp = np.roll(best_route, 1)
+            edges = list(np.stack([best_route, tmp]).T)
+            best_regret = -np.inf
             for city in unvisited_cities:
-                tmp1 = range(len(best_route))
-                tmp2 = np.roll(range(len(best_route)), 1)
-                edges = np.stack([tmp1, tmp2]).T
-                for i, j in edges:
-                    totalCost_i = self.getTotalEdgeCost(best_route[i], city)
-                    totalCost_j = self.getTotalEdgeCost(best_route[j], city)
-                    minDiff = min(totalCost_i, totalCost_j)
-                        
-                    regret_i = totalCost_i - minDiff
-                    regret_j = totalCost_j - minDiff
-                    regret = regret_i + regret_j
-                
-                    if max_regret < regret:
-                        if regret_i == 0:
-                            prev_city_idx = i
-                        else: 
-                            prev_city_idx = j
-                        max_regret = regret
-                        next_city = city
-            best_route.insert(prev_city_idx, next_city)
-            unvisited_cities.remove(next_city)
+                # Top 2 least costly insertions
+                # [1st best insertion cost, 2nd best insersion cost]
+                # min_2_costs = [np.inf, np.inf]
+                # for i, j in edges:
+                # # Calculate cost of inserting the city between i and j
+                #     insertionCost = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
+                #     if insertionCost < min_2_costs[0]:
+                #         min_2_costs[1] = min_2_costs[0]
+                #         min_2_costs[0] = insertionCost
+                #         current_best_position = best_route.index(j)
+                #     elif insertionCost < min_2_costs[1]:
+                #         min_2_costs[1] = insertionCost
+
+                # 2 subsequent edges
+                for edge_idx in range(len(edges[:-1])):
+                    i, j = edges[edge_idx]
+                    insertionCost_0 = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
+
+                    i, j = edges[edge_idx + 1]
+                    insertionCost_1 = self.distances[i][city] + self.distances[city][j] + self.costs[city] - self.distances[i][j]
+                    
+                    regret = abs(insertionCost_0 - insertionCost_1)
+                    best_location = np.argmin([insertionCost_0, insertionCost_1])
+                    
+                    if regret > best_regret:
+                        best_regret = regret
+                        new_city = city
+                        best_position = edges[edge_idx + best_location][0]
+
+                # Top 2 least costly insertions
+                # regret = min_2_costs[1] - min_2_costs[0]
+                # if regret > best_regret:
+                #     best_regret = regret
+                #     new_city = city
+                #     best_position = current_best_position
+                    
+            best_route.insert(best_position, new_city)
+            unvisited_cities.remove(new_city)
         return best_route
 
     def get_closest(self, route, vertex):
@@ -181,20 +202,20 @@ class Solver():
         outputPath = os.path.join(self.outputPath, algorithm + ".csv")
         self.writeRouteToCSV(best_sol, outputPath)
 
-        algorithm = "greedy_weighted"
-        solutions = []
-        evaluations = []
-        # Get solutions and evaluations
-        for startNode in self.cities:
-            solutions.append(self.greedy_weighted(startNode, weight_obj_funct=1, weight_2_regret=1))
-            evaluations.append(self.getTotalDistance(solutions[-1])
-        # Get and print stats
-        min_result, avg_result, max_result, best_sol_idx = self.calculateStats(evaluations)
-        print(f"MIN {min_result} AVG {avg_result} MAX {max_result}")
-        # Save best solution
-        best_sol = solutions[best_sol_idx]
-        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
-        self.writeRouteToCSV(best_sol, outputPath)
+        # algorithm = "greedy_weighted"
+        # solutions = []
+        # evaluations = []
+        # # Get solutions and evaluations
+        # for startNode in self.cities:
+        #     solutions.append(self.greedy_weighted(startNode, weight_obj_funct=1, weight_2_regret=1))
+        #     evaluations.append(self.getTotalDistance(solutions[-1]))
+        # # Get and print stats
+        # min_result, avg_result, max_result, best_sol_idx = self.calculateStats(evaluations)
+        # print(f"MIN {min_result} AVG {avg_result} MAX {max_result}")
+        # # Save best solution
+        # best_sol = solutions[best_sol_idx]
+        # outputPath = os.path.join(self.outputPath, algorithm + ".csv")
+        # self.writeRouteToCSV(best_sol, outputPath)
 
 
 if __name__ == "__main__":
