@@ -95,7 +95,7 @@ class Solver():
         return best_city, second_best
 
     def greedy_weighted(self, startNode, weight_obj_funct, weight_2_regret):
-        # Select 2nd and 3rd initial city
+        # Select 2nd initial city
         minTotalCost = np.inf
         for j in self.cities:
             if j != startNode:
@@ -140,13 +140,21 @@ class Solver():
                     
                     # best change in the objective function = the smallest change
                     regret = weight_2_regret * np.abs(first_loc_cost-second_loc_cost) - weight_obj_funct * np.abs(first_loc_change-second_loc_change)
+                    if first_loc_change > second_loc_change:
+                        location = second_index + 1
+                    else:
+                        location = best_index + 1
                 if regret > max_regret:
                     max_regret = regret
                     next_city = city
+                    best_location = location
                 else:
                     regrests[city] = regret
 
-            best_route.append(next_city)
+            if best_location < len(best_route):
+                best_route.insert(best_location, next_city)
+            else:
+                best_route.append(next_city)
             unvisited_cities.remove(next_city)
         return best_route
 
