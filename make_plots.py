@@ -45,4 +45,16 @@ for instancePath in glob(os.path.join(instancesPath, "*.csv")):
         ax.set(xlabel='x', ylabel='y')
         ax.label_outer()
     # Save
-    fig.savefig(os.path.join(outputPath, instanceName, "jpg"))
+    fig.savefig(os.path.join(outputPath, instanceName + ".jpg"))
+
+    # # Singe plot
+    # fig = plt.figure(figsize=(16, 5), dpi = 200) 
+    # fig.suptitle(instanceName, fontsize=20)
+    # i = 0
+    # # Plot coords
+    # plt.scatter(xs, ys, s=costs/10)
+    # # Plot edges
+    # for idx1, idx2 in edges[i]:
+    #     plt.plot([xs[idx1], xs[idx2]], [ys[idx1], ys[idx2]], 
+    #              color=colors[i])
+    # fig.savefig('./' + instanceName + ".jpg")
