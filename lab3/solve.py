@@ -1,18 +1,26 @@
 import csv
 import os
+import sys
 import random
-from copy import deepcopy
 from glob import glob
+from copy import deepcopy
+
 import numpy as np
 from tqdm import tqdm
 
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(parent_dir)
+from lab2.solve import Solver
 
-class Solver():
-    def __init__(self, instancePath, outputPath):
+
+class Solver_LS():
+    def __init__(self, instancePath, outputPath, heuristic_solver):
         self.instanceName, self.cities, self.costs, self.distances = self.readInstance(instancePath)
         self.outputPath = os.path.join(outputPath, self.instanceName)
         self.targetSolutionSize = round(len(self.cities) / 2)
-        print(self.instanceName)
+        # print(self.instanceName)
+
+        self.heuristic_solver = heuristic_solver
 
     def readInstance(self, instancePath : str):
         instanceName = instancePath.split('/')[-1].split('.')[0]
@@ -47,10 +55,7 @@ class Solver():
         return [startNode] + random.sample(list(set(self.cities) - {startNode}), self.targetSolutionSize - 1)
 
     def best_greedy_heuristic_ss(self, startNode):
-        solutionPath = f"../lab2/solutions/{self.instanceName}/greedy_weighted.csv"
-        with open(solutionPath, 'r') as f:
-            reader = csv.reader(f)
-            solution = [int(node[0]) for node in list(reader)]
+        solution = self.heuristic_solver.greedy_2_regret(startNode, weights = [0.5, 0.5])
         return solution
     
     
@@ -244,7 +249,7 @@ class Solver():
         min_result = np.amin(evaluations)
         avg_result = np.mean(evaluations)
         max_result = np.amax(evaluations)
-        return f"{avg_result}({min_result} - {max_result}", best_sol_idx
+        return f"{avg_result}({min_result} - {max_result})", best_sol_idx
     
     def writeRouteToCSV(self, route, outputPath):
         with open(outputPath, 'w') as f:
@@ -396,6 +401,7 @@ if __name__ == "__main__":
 
     random.seed(123)
     for instancePath in sorted(glob(os.path.join(instancesPath, "*.csv"))):
-        solver = Solver(instancePath, outputPath)
+        heuristic_solver = Solver(instancePath, outputPath)
+        solver = Solver_LS(instancePath, outputPath, heuristic_solver)
         solver.solve()
         print()
