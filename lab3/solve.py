@@ -60,18 +60,30 @@ class Solver_LS():
     
     
     ### Neighbouhoods
-    # Moves changing the order of nodes within the same set of selected nodes:
-        # two-nodes exchange;
-    def getDeltaIntraNodes(self, prev_i, i, j, next_j):
-        return self.distances[prev_i, j] - self.distances[prev_i, i] + self.distances[next_j, i] - self.distances[j, next_j]
-        # two-edges exchange;
+    # Intra-route - Moves changing the order of nodes within the same set of selected nodes:
+    #     two-nodes exchange;
+    #     two-edges exchange;
+    def getDeltaIntraNodes(self, prev_i, i, next_i, prev_j, j, next_j):
+        # Adjacent nodes (i > j)
+        if next_i == j:
+            return (self.distances[i, next_j] + self.distances[prev_i, j]) \
+             - (self.distances[prev_i, i] + self.distances[j, next_j])
+        # Last - First
+        elif next_j == i:
+            return (self.distances[i, prev_j] + self.distances[j, next_i]) \
+             - (self.distances[i, next_i] + self.distances[prev_j, j])
+        return (self.distances[prev_i, j] + self.distances[j, next_i] + self.distances[prev_j, i] + self.distances[i, next_j]) \
+            - (self.distances[prev_i, i] + self.distances[i, next_i] + self.distances[prev_j, j] + self.distances[j, next_j])
+            
     def getDeltaIntraEdges(self, e1, e2):
-        return self.distances[e1[0], e2[0]] + self.distances[e1[1], e2[1]] - self.distances[e1[0], e1[1]] - self.distances[e2[0], e2[1]] 
+        return self.distances[e1[0], e2[0]] + self.distances[e1[1], e2[1]] \
+            - (self.distances[e1[0], e1[1]] + self.distances[e2[0], e2[1]])
 
-    # Moves changing the set of selected nodes:
+    # Inter-route - Moves changing the set of selected nodes:
         # exchange of two nodes – one selected, one not selected;
     def getDeltaInter(self, prev, curr, next, new):
-        return self.distances[prev, new] - self.distances[prev, curr] + self.distances[new, next] - self.distances[curr, next] + self.costs[new] - self.costs[curr]
+        return self.distances[prev, new] + self.distances[new, next] + self.costs[new] \
+            - (self.distances[prev, curr] + self.distances[curr, next] + self.costs[curr])
 
     
     ### Type of search
@@ -94,59 +106,49 @@ class Solver_LS():
             better_found = False
 
             if neighbourhood_idx == 0:
+                # Intra-route nodes
                 if intra_route_type == "nodes":
-                    # Intra nodes
-                    for node_i_idx in range(len(current_sol[:-1])):
-                        if node_i_idx == 0:
-                            exclude = 1
-                        else:
-                            exclude = 0
-                        
-                        for node_j_idx in range(node_i_idx + 1, len(current_sol) - exclude):
-                            if (next_j:= node_j_idx + 1) == len(current_sol):
-                                next_j = 0
-                            delta = self.getDeltaIntraNodes(current_sol[node_i_idx - 1], current_sol[node_i_idx], current_sol[node_j_idx], current_sol[next_j])
+                    for i in range(self.targetSolutionSize - 1):
+                        for j in range(i + 1, self.targetSolutionSize):
+                            delta = self.getDeltaIntraNodes(current_sol[i - 1], current_sol[i], current_sol[i + 1], 
+                                                            current_sol[j - 1], current_sol[j], current_sol[(j + 1) % self.targetSolutionSize])
                             if delta < 0:
-                                best_route = current_sol[:node_i_idx] + current_sol[node_i_idx: node_j_idx + 1][::-1]
-                                if next_j != 0 :
-                                    best_route += current_sol[next_j:]
+                                best_route = deepcopy(current_sol)
+                                best_route[i], best_route[j] = best_route[j], best_route[i]
                                 break
                         if best_route:
                             current_sol = best_route
                             better_found = True
                             break
+                # Intra-route edges
                 else:
-                    # Intra edges
-                    # Generate edges with node indicies [[node1, node2], [node1_idx, node2_idx]]
-                    edges = [[[node_i, current_sol[i + 1]], [i, i + 1]] for i, node_i in enumerate(current_sol[:-1])]
-                    edges.append([[current_sol[-1], current_sol[0]], [len(current_sol), 0]])
-                    
-                    for edge1_idx, edge1 in enumerate(edges[:-2]):
-                        if edge1_idx == 0:
-                            exclude = -1
-                        else:
-                            exclude = len(edges)
-                        
-                        for edge2 in edges[edge1_idx + 2: exclude]:
+                    for i in range(self.targetSolutionSize):
+                        edge1_idx = [i, (i + 1) % self.targetSolutionSize]
+                        edge1 = [current_sol[edge1_idx[0]], current_sol[edge1_idx[1]]]
+                        for j in range(i + 2, self.targetSolutionSize):
+                            if (next_j := (j + 1) % self.targetSolutionSize) == i:
+                                    continue
+                            edge2_idx = [j, next_j]
+                            edge2 = [current_sol[edge2_idx[0]], current_sol[edge2_idx[1]]]
                             # Using nodes themselves
-                            delta = self.getDeltaIntraEdges(edge1[0], edge2[0])
+                            delta = self.getDeltaIntraEdges(edge1, edge2)
                             if delta < 0:
-                                # First part, Reversed middle part, Last part, using node indicies
-                                e_idx1, e_idx2 = edge1[1], edge2[1]
+                                # Using node indicies
+                                # First part, Reversed middle part, Last part
                                 best_route = deepcopy(current_sol)
-                                best_route = best_route[:e_idx1[1]] + best_route[e_idx1[1]: e_idx2[1]][::-1] + best_route[e_idx2[1]:]
+                                best_route = best_route[:edge1_idx[1]] + best_route[edge1_idx[1]: (j + 1)][::-1] + best_route[(j + 1):]
                                 break
                         if best_route:                    
                             current_sol = best_route
                             better_found = True
                             break
+            # Inter-route
             else:
-                # Inter
                 # Get a list of not seleted nodes
                 not_selected = list(set(self.cities) - set(current_sol))
-                for i, node_i in enumerate(current_sol[:-1]):
-                    for node_j in not_selected:
-                        delta = self.getDeltaInter(current_sol[i - 1], node_i, current_sol[i + 1], node_j)
+                for i in range(self.targetSolutionSize):
+                    for node_j in not_selected:                    
+                        delta = self.getDeltaInter(current_sol[i - 1], current_sol[i], current_sol[(i + 1) % self.targetSolutionSize], node_j)
                         if delta < 0:
                             best_route = deepcopy(current_sol)
                             best_route[i] = node_j
@@ -171,65 +173,47 @@ class Solver_LS():
             best_route = None
             better_found = False
 
+            # Intra-route nodes
             if intra_route_type == "nodes":
-                # Intra-route nodes
-                for node_i_idx in range(len(current_sol[:-1])):
-                    if node_i_idx == 0:
-                        exclude = 1
-                    else:
-                        exclude = 0
-                    
-                    for node_j_idx in range(node_i_idx + 1, len(current_sol) - exclude):
-                        if (next_j:= node_j_idx + 1) == len(current_sol):
-                            next_j = 0
-                        delta = self.getDeltaIntraNodes(current_sol[node_i_idx - 1], current_sol[node_i_idx], current_sol[node_j_idx], current_sol[next_j])
+                for i in range(self.targetSolutionSize - 1):
+                    for j in range(i + 1, self.targetSolutionSize):
+                        delta = self.getDeltaIntraNodes(current_sol[i - 1], current_sol[i], current_sol[i + 1], 
+                                                        current_sol[j - 1], current_sol[j], current_sol[(j + 1) % self.targetSolutionSize])
                         if delta < best_delta:
                             best_delta = delta
-                            best_route = current_sol[:node_i_idx] + current_sol[node_i_idx: node_j_idx + 1][::-1]
-                            if next_j != 0 :
-                                best_route += current_sol[next_j:]
-                            # break
-                if best_route:
-                    current_sol = best_route
-                    better_found = True
-                    # break
-            else:
-                # Intra-route edges
-                # Generate edges with node indicies [[node1, node2], [node1_idx, node2_idx]]
-                edges = [[[node_i, current_sol[i + 1]], [i, i + 1]] for i, node_i in enumerate(current_sol[:-1])]
-                edges.append([[current_sol[-1], current_sol[0]], [len(current_sol), 0]])
-                
-                for edge1_idx, edge1 in enumerate(edges[:-2]):
-                    if edge1_idx == 0:
-                        exclude = -1
-                    else:
-                        exclude = len(edges)
-                    
-                    for edge2 in edges[edge1_idx + 2: exclude]:
-                        # Using nodes themselves
-                        delta = self.getDeltaIntraEdges(edge1[0], edge2[0])
-                        if delta < best_delta:
-                            best_delta = delta
-                            # First part, Reversed middle part, Last part, using node indicies
-                            e_idx1, e_idx2 = edge1[1], edge2[1]
                             best_route = deepcopy(current_sol)
-                            best_route = best_route[:e_idx1[1]] + best_route[e_idx1[1]: e_idx2[1]][::-1] + best_route[e_idx2[1]:]
-                if best_route:                    
-                    current_sol = best_route
-                    better_found = True
+                            best_route[i], best_route[j] = best_route[j], best_route[i]
+            # Intra-route edges
+            else:
+                for i in range(self.targetSolutionSize):
+                    edge1_idx = [i, (i + 1) % self.targetSolutionSize]
+                    edge1 = [current_sol[edge1_idx[0]], current_sol[edge1_idx[1]]]
+                    for j in range(i + 2, self.targetSolutionSize):
+                        if (next_j := (j + 1) % self.targetSolutionSize) == i:
+                                continue
+                        edge2_idx = [j, next_j]
+                        edge2 = [current_sol[edge2_idx[0]], current_sol[edge2_idx[1]]]
+                        # Using nodes themselves
+                        delta = self.getDeltaIntraEdges(edge1, edge2)
+                        if delta < best_delta:
+                            best_delta = delta
+                            # Using node indicies
+                            # First part, Reversed middle part, Last part
+                            best_route = deepcopy(current_sol)
+                            best_route = best_route[:edge1_idx[1]] + best_route[edge1_idx[1]: (j + 1)][::-1] + best_route[(j + 1):]
             # Inter-route
             # Get a list of not seleted nodes
             not_selected = list(set(self.cities) - set(current_sol))
-            for i, node_i in enumerate(current_sol[:-1]):
-                for node_j in not_selected:
-                    delta = self.getDeltaInter(current_sol[i - 1], node_i, current_sol[i + 1], node_j)
+            for i in range(self.targetSolutionSize):
+                for node_j in not_selected:                    
+                    delta = self.getDeltaInter(current_sol[i - 1], current_sol[i], current_sol[(i + 1) % self.targetSolutionSize], node_j)
                     if delta < best_delta:
                         best_delta = delta
                         best_route = deepcopy(current_sol)
                         best_route[i] = node_j
-                        # break
+            # If improving delta was found
             if best_route:
-                current_sol = best_route
+                current_sol = deepcopy(best_route)
                 better_found = True
         return current_sol
 
@@ -382,7 +366,6 @@ class Solver_LS():
         best_sol = solutions[best_sol_idx]
         outputPath = os.path.join(self.outputPath, algorithm + ".csv")
         self.writeRouteToCSV(best_sol, outputPath)
-
 
 
 if __name__ == "__main__":
