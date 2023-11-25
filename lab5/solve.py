@@ -117,7 +117,41 @@ class Solver_LS():
                     best_route = deepcopy(current_sol)
                     # First part, Reversed middle part, Last part
                     best_route = best_route[:next_i] + best_route[next_i: next_j][::-1] + best_route[next_j:]
+
+            # Inter-route
+            # Get a list of not seleted nodes
+            not_selected = list(set(self.cities) - set(current_sol))
+            for i in range(self.targetSolutionSize):
+                for node_j in not_selected:                    
+                    swap = i, node_j
+                    if swap in evaluatedMovesInter.keys():
+                        delta = evaluatedMovesInter[swap]
+                    else:
+                        # Evaluate new moves
+                        delta = self.getDeltaInter(current_sol[i - 1], current_sol[i], current_sol[(i + 1) % self.targetSolutionSize], node_j)
+                        evaluatedMovesInter[swap] = delta
+                    
+                    # Store improving moves
+                    if delta < 0:
+                        improvingMovesInter[swap] = delta
+            if improvingMovesInter:
+                improvingMovesInter = dict(sorted(improvingMovesInter.items(), key=lambda item: item[1]))
+
+                # Select best
+                swap, delta = list(improvingMovesInter.keys())[0], list(improvingMovesInter.values())[0]
+                temp = deepcopy(current_sol)
+                index, new = swap
+                temp[index] = new
+                if delta < best_delta and swap not in improvingMovesInter.keys():
+                #if delta < best_delta and temp not in checked_moves:
+                    best_delta = deepcopy(delta)
+
+                    index, new = swap
+                    best_route = deepcopy(current_sol)
+                    best_route[index] = new
+                    #checked_moves.append(best_route)
             #TODO
+            
             # # Inter-route
             # # Get a list of not seleted nodes
             # not_selected = list(set(self.cities) - set(current_sol))
