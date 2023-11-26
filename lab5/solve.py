@@ -70,14 +70,14 @@ class Solver_LS():
         current_sol = init_sol_f(startNode)
 
         evaluatedMovesIntra = dict()
-        # evaluatedMovesInter = dict() #TODO
+        evaluatedMovesInter = dict()
         better_found = True
         while better_found:
             best_delta = 0
             best_route = None
             better_found = False
             improvingMovesIntra = dict()
-            # improvingMovesInter = dict() #TODO
+            improvingMovesInter = dict()
 
             # Intra-route edges
             for i in range(self.targetSolutionSize):
@@ -117,7 +117,6 @@ class Solver_LS():
                     best_route = deepcopy(current_sol)
                     # First part, Reversed middle part, Last part
                     best_route = best_route[:next_i] + best_route[next_i: next_j][::-1] + best_route[next_j:]
-
             # Inter-route
             # Get a list of not seleted nodes
             not_selected = list(set(self.cities) - set(current_sol))
@@ -136,47 +135,17 @@ class Solver_LS():
                         improvingMovesInter[swap] = delta
             if improvingMovesInter:
                 improvingMovesInter = dict(sorted(improvingMovesInter.items(), key=lambda item: item[1]))
-
                 # Select best
                 swap, delta = list(improvingMovesInter.keys())[0], list(improvingMovesInter.values())[0]
                 temp = deepcopy(current_sol)
                 index, new = swap
                 temp[index] = new
                 if delta < best_delta and swap not in improvingMovesInter.keys():
-                #if delta < best_delta and temp not in checked_moves:
                     best_delta = deepcopy(delta)
 
                     index, new = swap
                     best_route = deepcopy(current_sol)
                     best_route[index] = new
-                    #checked_moves.append(best_route)
-            #TODO
-            
-            # # Inter-route
-            # # Get a list of not seleted nodes
-            # not_selected = list(set(self.cities) - set(current_sol))
-            # for i in range(self.targetSolutionSize):
-                
-            #     for candidate in self.candidates[current_sol[i]]:
-            #         # Skip candidates that are in the current colution
-            #         if candidate in current_sol:
-            #             continue
-            #         # Current with candidate become connected, swap cadidate with either Previuos or Next
-            #         # Previous
-            #         delta = self.getDeltaInter(current_sol[i - 2], current_sol[i - 1], current_sol[i], 
-            #                                    candidate)
-            #         if delta < best_delta:
-            #             best_delta = delta
-            #             best_route = deepcopy(current_sol)
-            #             best_route[i - 1] = candidate
-            #         # Next
-            #         next_i = (i + 1) % self.targetSolutionSize
-            #         delta = self.getDeltaInter(current_sol[i], current_sol[next_i], current_sol[(i + 2) % self.targetSolutionSize], 
-            #                                    candidate)
-            #         if delta < best_delta:
-            #             best_delta = delta
-            #             best_route = deepcopy(current_sol)
-            #             best_route[next_i] = candidate
             # If improving delta was found
             if best_route:               
                 current_sol = deepcopy(best_route)
@@ -203,7 +172,7 @@ class Solver_LS():
         evaluations = []
         # Get solutions and evaluations
         print(algorithm)
-        for startNode in tqdm(self.cities[:5]): #TODO
+        for startNode in tqdm(self.cities):
             solutions.append(self.steepest_ls(startNode, self.random_ss, "edges"))
             evaluations.append(self.getTotalDistance(solutions[-1]))
         # Get and print stats
@@ -224,4 +193,3 @@ if __name__ == "__main__":
         solver = Solver_LS(instancePath, outputPath)
         solver.solve()
         print()
-        break #TODO
