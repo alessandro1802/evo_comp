@@ -122,30 +122,29 @@ class Solver_LS():
             not_selected = list(set(self.cities) - set(current_sol))
             for i in range(self.targetSolutionSize):
                 for node_j in not_selected:                    
-                    swap = i, node_j
-                    if swap in evaluatedMovesInter.keys():
-                        delta = evaluatedMovesInter[swap]
+                    move = (current_sol[i - 1], current_sol[i], current_sol[(i + 1) % self.targetSolutionSize], node_j)
+                    if move in evaluatedMovesInter.keys():
+                        delta = evaluatedMovesInter[move]
                     else:
                         # Evaluate new moves
                         delta = self.getDeltaInter(current_sol[i - 1], current_sol[i], current_sol[(i + 1) % self.targetSolutionSize], node_j)
-                        evaluatedMovesInter[swap] = delta
-                    
+                        evaluatedMovesInter[move] = delta
                     # Store improving moves
                     if delta < 0:
-                        improvingMovesInter[swap] = delta
+                        improvingMovesInter[move] = delta
             if improvingMovesInter:
                 improvingMovesInter = dict(sorted(improvingMovesInter.items(), key=lambda item: item[1]))
                 # Select best
-                swap, delta = list(improvingMovesInter.keys())[0], list(improvingMovesInter.values())[0]
-                temp = deepcopy(current_sol)
-                index, new = swap
-                temp[index] = new
-                if delta < best_delta and swap not in improvingMovesInter.keys():
-                    best_delta = deepcopy(delta)
-
-                    index, new = swap
+                move, delta = list(improvingMovesInter.keys())[0], list(improvingMovesInter.values())[0]
+                if delta < best_delta:
+                    best_delta = delta
+                    
+                    node_i = move[1]
+                    node_j = move[-1]
+                    node_i_idx = current_sol.index(node_i)
+                    
                     best_route = deepcopy(current_sol)
-                    best_route[index] = new
+                    best_route[node_i_idx] = node_j
             # If improving delta was found
             if best_route:               
                 current_sol = deepcopy(best_route)
