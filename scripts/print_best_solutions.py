@@ -1,10 +1,10 @@
 import csv
 
 
-solutionPaths = ["./lab6/solutions/TSPA/ils.csv", 
-                 "./lab6/solutions/TSPB/ils.csv", 
-                 "./lab6/solutions/TSPC/ils.csv", 
-                 "./lab6/solutions/TSPD/ils.csv"]
+solutionPaths = ["../lab6/solutions/TSPA/ils.csv", 
+                 "../lab6/solutions/TSPB/ils.csv", 
+                 "../lab6/solutions/TSPC/ils.csv", 
+                 "../lab6/solutions/TSPD/ils.csv"]
 
 
 for solPath in solutionPaths:

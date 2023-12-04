@@ -7,11 +7,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 
-labPath = "./lab6/"
+labPath = "../lab6/"
 width = 16
 
 
-instancesPath = "./instances/"
+instancesPath = "../instances/"
 solutionsPath = os.path.join(labPath, "solutions/")
 outputPath =  os.path.join(labPath, "plots/")
 
