@@ -1,10 +1,8 @@
 import csv
 import os
-import sys
 import random
 from glob import glob
 from copy import deepcopy
-from functools import partial
 
 import numpy as np
 from tqdm import tqdm
@@ -78,7 +76,6 @@ class Solver_LS():
             better_found = False
             improvingMovesIntra = dict()
             improvingMovesInter = dict()
-
             # Intra-route edges
             for i in range(self.targetSolutionSize):
                 edge1_idx = [i, (i + 1) % self.targetSolutionSize]

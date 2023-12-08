@@ -154,7 +154,7 @@ class Solver_LS():
             intensified_solution =  self.steepest_ls(perturbed_solution)
             new_obj = self.getTotalDistance(intensified_solution)
 
-            lsRuns += 2
+            lsRuns += 1
             # Acceptance criterion
             if new_obj < current_obj:
                 current_sol = intensified_solution
