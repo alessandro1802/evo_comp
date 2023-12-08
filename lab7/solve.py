@@ -8,13 +8,19 @@ from time import time
 import numpy as np
 from tqdm import tqdm
 
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(parent_dir)
+from lab2.solve import Solver
+
 
 class Solver_LS():
-    def __init__(self, instancePath, outputPath):
+    def __init__(self, instancePath, outputPath, heuristic_solver):
         self.instanceName, self.cities, self.costs, self.distances = self.readInstance(instancePath)
         self.outputPath = os.path.join(outputPath, self.instanceName)
         self.targetSolutionSize = round(len(self.cities) / 2)
-        print(self.instanceName)
+        # print(self.instanceName)
+        self.heuristic_solver = heuristic_solver
 
     def readInstance(self, instancePath : str):
         instanceName = instancePath.split('/')[-1].split('.')[0]
@@ -110,25 +116,52 @@ class Solver_LS():
 
     
     #TODO
-    def destroy(self):
+    def destroy(self, solution):
         pass
 
     #TODO
-    def repair(self):
+    def repair(self, solution):
         pass
     
 
-    #TODO
-    def lsns(self):
-        pass
+    def lsns(self, initial_sol, max_time_seconds, ls, init_ls = False):
+        current_sol = initial_sol
+        # Initial LS (in case of random intial solution)
+        if init_ls:
+            current_sol = self.steepest_ls(current_sol)
+
+        mainLoopRuns = 0
+        best_obj = np.inf
+        best_sol = None
+        
+        start_time = time()
+        while time() - start_time < max_time_seconds:
+            mainLoopRuns += 1
+            
+            rebuilt_sol = self.destroy(current_sol)
+            rebuilt_sol = self.repair(rebuilt_sol)
+            
+            if ls:
+                rebuilt_sol = self.steepest_ls(rebuilt_sol)
+            # Calculate objective
+            obj = self.getTotalDistance(rebuilt_sol)
+            # Assign best solution
+            if obj < best_obj:
+                best_obj = obj
+                best_sol = rebuilt_sol
+        return best_sol, best_obj, mainLoopRuns
 
     
-    def calculateStats(self, evaluations):
+    def calculateStats(self, evaluations, runs):
         best_sol_idx = np.argmin(evaluations)
         min_result = np.amin(evaluations)
         avg_result = np.mean(evaluations)
         max_result = np.amax(evaluations)
-        return f"{avg_result}({min_result} - {max_result})", best_sol_idx
+        
+        min_runs = np.amin(runs)
+        avg_runs = np.mean(runs)
+        max_runs = np.amax(runs)
+        return f"{avg_result} ({min_result} - {max_result})", best_sol_idx, f"{avg_runs} ({min_runs} - {max_runs})"
     
     def writeRouteToCSV(self, route, outputPath):
         with open(outputPath, 'w') as f:
@@ -137,53 +170,55 @@ class Solver_LS():
             
 
     def solve(self):
-        #TODO
+        max_time_seconds = 320
+        
+        startNode = np.random.randint(len(self.cities))
+        initial_sol = self.heuristic_solver.greedy_2_regret(startNode, weights = [0.5, 0.5])
+        
         algorithm = "lsns_with_ls"
         solutions, evaluations, runs = [], [], []
         # Get solutions and evaluations
         print(algorithm)
-        max_time_seconds = 320
         for _ in tqdm(range(20)):
-            sol, eval, lsRuns = self.ils(max_time_seconds)
+            sol, eval, lsRuns = self.lsns(initial_sol, max_time_seconds, True)
             solutions.append(sol)
             evaluations.append(eval)
-            runs.append(lsRuns)
+            runs.append(mainLoopRuns)
         # Get and print stats
-        stats, best_sol_idx = self.calculateStats(evaluations)
-        print(stats)
-        print("LS runs:", np.mean(runs))
+        stats_results, best_sol_idx, stats_runs = self.calculateStats(evaluations, runs)
+        print("Results:", stats_results)
+        print("Runs:", stats_runs)
         # Save best solution
         best_sol = solutions[best_sol_idx]
         outputPath = os.path.join(self.outputPath, algorithm + ".csv")
         self.writeRouteToCSV(best_sol, outputPath)
 
-        #TODO
         algorithm = "lsns_without_ls"
         solutions, evaluations, runs = [], [], []
         # Get solutions and evaluations
         print(algorithm)
-        max_time_seconds = 320
         for _ in tqdm(range(20)):
-            sol, eval, lsRuns = self.ils(max_time_seconds)
+            sol, eval, lsRuns = self.lsns(initial_sol, max_time_seconds, False)
             solutions.append(sol)
             evaluations.append(eval)
-            runs.append(lsRuns)
+            runs.append(mainLoopRuns)
         # Get and print stats
-        stats, best_sol_idx = self.calculateStats(evaluations)
-        print(stats)
-        print("LS runs:", np.mean(runs))
+        stats_results, best_sol_idx, stats_runs = self.calculateStats(evaluations, runs)
+        print("Results:", stats_results)
+        print("Runs:", stats_runs)
         # Save best solution
         best_sol = solutions[best_sol_idx]
         outputPath = os.path.join(self.outputPath, algorithm + ".csv")
         self.writeRouteToCSV(best_sol, outputPath)
         
-
+        
 if __name__ == "__main__":
     instancesPath = "../instances/"
     outputPath = "./solutions/"
 
     random.seed(123)
     for instancePath in sorted(glob(os.path.join(instancesPath, "*.csv"))):
-        solver = Solver_LS(instancePath, outputPath)
+        heuristic_solver = Solver(instancePath, outputPath)
+        solver = Solver_LS(instancePath, outputPath, heuristic_solver)
         solver.solve()
         print()
