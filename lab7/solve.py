@@ -115,13 +115,64 @@ class Solver_LS():
         return current_sol
 
     
-    #TODO
-    def destroy(self, solution):
-        pass
+    # remove up to 30% of nodes- subpaths of length from 1 to 5
+    def destroy(self, sol):
+        # remove 20-30% of nodes
+        new_sol = sol.copy()
+        n_rem = np.floor(0.3 * self.targetSolutionSize)
 
-    #TODO
-    def repair(self, solution):
-        pass
+        # vertices removed at random or as several or one subpath
+        while n_rem > 0:
+            if n_rem >= 5:
+                length = random.randint(1, 5)
+            else:
+                length = 1
+
+            n_rem -= length
+            i = random.randint(0, len(sol)-1-length)
+            new_sol = new_sol[:i] + new_sol[i+length:]
+
+        return new_sol
+
+    
+    # Repair the solution using the greedy 2-regret heuristic
+    def repair(self, sol):
+        new_sol = self.greedy_2_regret(sol)
+        return new_sol
+
+    
+    def greedy_2_regret(self, start_route, weights = []):        
+        best_route = start_route.copy()
+
+        # Greedily build the TSP route
+        unvisited_cities = list(set(self.cities) - set(best_route))
+        while len(best_route) < self.targetSolutionSize:
+            tmp = np.roll(best_route, -1)
+            edges = list(np.stack([best_route, tmp]).T)
+            best_regret = -np.inf
+            for city in unvisited_cities:
+                # Top 2 least costly insertions
+                min_costs = [np.inf, np.inf]
+                for node1, node2 in edges:
+                    # Calculate cost of inserting the city between i and j
+                    insertionCost = self.distances[node1][city] + self.distances[city][node2] + self.costs[city] - self.distances[node1][node2]
+                    if insertionCost < min_costs[0]:
+                        min_costs[1] = min_costs[0]
+                        min_costs[0] = insertionCost
+                        # Insert new node instead of edge with min cost of insertion
+                        current_best_position = best_route.index(node2)
+                    elif insertionCost < min_costs[1]:
+                        min_costs[1] = insertionCost
+                regret = min_costs[1] - min_costs[0]
+                if weights:
+                    regret = weights[0] * regret - weights[1] * min_costs[0]
+                if regret > best_regret:
+                    best_regret = regret
+                    new_city = city
+                    best_position = current_best_position
+            best_route.insert(best_position, new_city)
+            unvisited_cities.remove(new_city)
+        return best_route
     
 
     def lsns(self, initial_sol, max_time_seconds, ls, init_ls = False):
