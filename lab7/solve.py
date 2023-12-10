@@ -115,13 +115,12 @@ class Solver_LS():
         return current_sol
 
     
-    # remove up to 30% of nodes- subpaths of length from 1 to 5
+    # remove subpaths of length from 1 to 5
     def destroy(self, sol):
-        # remove 20-30% of nodes
+        # Remove 20-30% of nodes
         new_sol = sol.copy()
         n_rem = np.floor(0.3 * self.targetSolutionSize)
-
-        # vertices removed at random or as several or one subpath
+        # Vertices removed at random or as several or one subpath
         while n_rem > 0:
             if n_rem >= 5:
                 length = random.randint(1, 5)
@@ -134,16 +133,8 @@ class Solver_LS():
 
         return new_sol
 
-    
-    # Repair the solution using the greedy 2-regret heuristic
-    def repair(self, sol):
-        new_sol = self.greedy_2_regret(sol)
-        return new_sol
-
-    
     def greedy_2_regret(self, start_route, weights = []):        
         best_route = start_route.copy()
-
         # Greedily build the TSP route
         unvisited_cities = list(set(self.cities) - set(best_route))
         while len(best_route) < self.targetSolutionSize:
@@ -174,6 +165,11 @@ class Solver_LS():
             unvisited_cities.remove(new_city)
         return best_route
     
+    # Repair the solution using the Greedy 2-regret heuristic
+    def repair(self, sol):
+        new_sol = self.greedy_2_regret(sol)
+        return new_sol
+
 
     def lsns(self, initial_sol, max_time_seconds, ls, init_ls = False):
         current_sol = initial_sol
@@ -231,7 +227,7 @@ class Solver_LS():
         # Get solutions and evaluations
         print(algorithm)
         for _ in tqdm(range(20)):
-            sol, eval, lsRuns = self.lsns(initial_sol, max_time_seconds, True)
+            sol, eval, mainLoopRuns = self.lsns(initial_sol, max_time_seconds, True)
             solutions.append(sol)
             evaluations.append(eval)
             runs.append(mainLoopRuns)
@@ -249,7 +245,7 @@ class Solver_LS():
         # Get solutions and evaluations
         print(algorithm)
         for _ in tqdm(range(20)):
-            sol, eval, lsRuns = self.lsns(initial_sol, max_time_seconds, False)
+            sol, eval, mainLoopRuns = self.lsns(initial_sol, max_time_seconds, False)
             solutions.append(sol)
             evaluations.append(eval)
             runs.append(mainLoopRuns)
