@@ -165,9 +165,9 @@ class Solver_LS():
             unvisited_cities.remove(new_city)
         return best_route
     
-    # Repair the solution using the Greedy 2-regret heuristic
+    # Repair the solution using the weighted Greedy 2-regret heuristic
     def repair(self, sol):
-        new_sol = self.greedy_2_regret(sol)
+        new_sol = self.greedy_2_regret(sol, weights = [0.5, 0.5])
         return new_sol
 
 
