@@ -1,6 +1,4 @@
-import csv
 import os
-import sys
 import random
 from glob import glob
 from copy import deepcopy
@@ -8,46 +6,20 @@ from copy import deepcopy
 import numpy as np
 from tqdm import tqdm
 
+import sys
 parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
 sys.path.append(parent_dir)
-from lab2.solve import Solver
+from utils import Solver
+from lab2.solve import Greedy_Regret
 
 
-class Solver_LS():
+class Local_Search(Solver):
     def __init__(self, instancePath, outputPath, heuristic_solver):
         self.instanceName, self.cities, self.costs, self.distances = self.readInstance(instancePath)
         self.outputPath = os.path.join(outputPath, self.instanceName)
         self.targetSolutionSize = round(len(self.cities) / 2)
-        # print(self.instanceName)
 
         self.heuristic_solver = heuristic_solver
-
-    def readInstance(self, instancePath : str):
-        instanceName = instancePath.split('/')[-1].split('.')[0]
-        
-        with open(instancePath, 'r') as f:
-            reader = csv.reader(f, delimiter=';')
-            data = np.array(list(reader)).astype(int)
-
-        cities = np.arange(data.shape[0])
-        costs = data[:, 2]
-        
-        coords = data[:, :2]
-        distances = np.sum((coords[:, None, :] - coords[None, :, :]) ** 2, axis=-1)
-        distances = np.sqrt(distances)
-        distances = np.round(distances).astype(int)
-        return instanceName, cities, costs, distances
-        
-    def getTotalEdgeCost(self, node_i, node_j):
-        return self.distances[node_i, node_j] + self.costs[node_j]
-        
-    def getTotalDistance(self, route):
-        total = 0
-        for i in range(len(route) - 1):
-            total += self.getTotalEdgeCost(route[i], route[i + 1])
-        # Return to the starting city
-        total += self.getTotalEdgeCost(route[-1], route[0])
-        return total
 
     
     ### Starting solutions
@@ -55,7 +27,10 @@ class Solver_LS():
         return [startNode] + random.sample(list(set(self.cities) - {startNode}), self.targetSolutionSize - 1)
 
     def best_greedy_heuristic_ss(self, startNode):
-        solution = self.heuristic_solver.greedy_2_regret(startNode, weights = [0.5, 0.5])
+        bestNode = self.heuristic_solver.getGredilyNearestCity(startNode)
+        init_route = [startNode, bestNode]
+        
+        solution = self.heuristic_solver.greedy_2_regret(init_route, weights = [0.5, 0.5])
         return solution
     
     
@@ -87,9 +62,8 @@ class Solver_LS():
 
     
     ### Type of search
-    def greedy_ls(self, startNode, init_sol_f, intra_route_type):
-        # Generate initial solution
-        current_sol = init_sol_f(startNode)
+    def greedy(self, init_sol, intra_route_type):
+        current_sol = init_sol
         
         better_found = True
         while better_found:
@@ -159,9 +133,8 @@ class Solver_LS():
                         break
         return current_sol
 
-    def steepest_ls(self, startNode, init_sol_f, intra_route_type):
-        # Generate initial solution
-        current_sol = init_sol_f(startNode)
+    def steepest(self, init_sol, intra_route_type):
+        current_sol = init_sol
 
         better_found = True
         while better_found:
@@ -217,155 +190,44 @@ class Solver_LS():
                 better_found = True
         return current_sol
 
-    
-    def calculateStats(self, evaluations):
-        best_sol_idx = np.argmin(evaluations)
-        min_result = np.amin(evaluations)
-        avg_result = np.mean(evaluations)
-        max_result = np.amax(evaluations)
-        return f"{avg_result}({min_result} - {max_result})", best_sol_idx
-    
-    def writeRouteToCSV(self, route, outputPath):
-        with open(outputPath, 'w') as f:
-            write = csv.writer(f)
-            write.writerows(np.array(route)[:, np.newaxis])
 
     def solve(self):
+        def _solve(algorithmName, init_sol_f, algorithm, intra_route_type):
+            solutions = []
+            evaluations = []
+            # Get solutions and evaluations
+            print(algorithmName)
+            for startNode in tqdm(self.cities):
+                # Generate initial solution
+                init_sol = init_sol_f(startNode)
+                
+                solutions.append(algorithm(init_sol, intra_route_type))
+                evaluations.append(self.getTotalDistance(solutions[-1]))
+            # Get and print stats
+            stats, best_sol_idx = self.calculateStatsFormatted(evaluations)
+            print(stats)
+            # Save best solution
+            best_sol = solutions[best_sol_idx]
+            outputPath = os.path.join(self.outputPath, algorithmName + ".csv")
+            self.writeRouteToCSV(best_sol, outputPath)
+        
+        print(self.instanceName)
         # 1. greedy, two-nodes exchange, random ss
-        algorithm = "greedy_two-nodes_random"
-        solutions = []
-        evaluations = []
-        # Get solutions and evaluations
-        print(algorithm)
-        for startNode in tqdm(self.cities):
-            solutions.append(self.greedy_ls(startNode, self.random_ss, "nodes"))
-            evaluations.append(self.getTotalDistance(solutions[-1]))
-        # Get and print stats
-        stats, best_sol_idx = self.calculateStats(evaluations)
-        print(stats)
-        # Save best solution
-        best_sol = solutions[best_sol_idx]
-        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
-        self.writeRouteToCSV(best_sol, outputPath)
-        
+        _solve("greedy_two-nodes_random", self.random_ss, self.greedy, "nodes")
         # 2. greedy, two-nodes exchange, best greedy heuristic ss
-        algorithm = "greedy_two-nodes_best-heuristic"
-        solutions = []
-        evaluations = []
-        # Get solutions and evaluations
-        print(algorithm)
-        for startNode in tqdm(self.cities):
-            solutions.append(self.greedy_ls(startNode, self.best_greedy_heuristic_ss, "nodes"))
-            evaluations.append(self.getTotalDistance(solutions[-1]))
-        # Get and print stats
-        stats, best_sol_idx = self.calculateStats(evaluations)
-        print(stats)
-        # Save best solution
-        best_sol = solutions[best_sol_idx]
-        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
-        self.writeRouteToCSV(best_sol, outputPath)
-        
+        _solve("greedy_two-nodes_best-heuristic", self.best_greedy_heuristic_ss, self.greedy, "nodes")
         # 3. greedy, two-edges exchange, random ss
-        algorithm = "greedy_two-edges_random"
-        solutions = []
-        evaluations = []
-        # Get solutions and evaluations
-        print(algorithm)
-        for startNode in tqdm(self.cities):
-            solutions.append(self.greedy_ls(startNode, self.random_ss, "edges"))
-            evaluations.append(self.getTotalDistance(solutions[-1]))
-        # Get and print stats
-        stats, best_sol_idx = self.calculateStats(evaluations)
-        print(stats)
-        # Save best solution
-        best_sol = solutions[best_sol_idx]
-        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
-        self.writeRouteToCSV(best_sol, outputPath)
-
+        _solve("greedy_two-edges_random", self.random_ss, self.greedy, "edges")
         # 4. greedy, two-edges exchange, best greedy heuristic ss
-        algorithm = "greedy_two-edges_best-heuristic"
-        solutions = []
-        evaluations = []
-        # Get solutions and evaluations
-        print(algorithm)
-        for startNode in tqdm(self.cities):
-            solutions.append(self.greedy_ls(startNode, self.best_greedy_heuristic_ss, "edges"))
-            evaluations.append(self.getTotalDistance(solutions[-1]))
-        # Get and print stats
-        stats, best_sol_idx = self.calculateStats(evaluations)
-        print(stats)
-        # Save best solution
-        best_sol = solutions[best_sol_idx]
-        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
-        self.writeRouteToCSV(best_sol, outputPath)
-
+        _solve("greedy_two-edges_best-heuristic", self.best_greedy_heuristic_ss, self.greedy, "edges")
         # 5. steepest, two-nodes exchange, random ss
-        algorithm = "steepest_two-nodes_random"
-        solutions = []
-        evaluations = []
-        # Get solutions and evaluations
-        print(algorithm)
-        for startNode in tqdm(self.cities):
-            solutions.append(self.steepest_ls(startNode, self.random_ss, "nodes"))
-            evaluations.append(self.getTotalDistance(solutions[-1]))
-        # Get and print stats
-        stats, best_sol_idx = self.calculateStats(evaluations)
-        print(stats)
-        # Save best solution
-        best_sol = solutions[best_sol_idx]
-        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
-        self.writeRouteToCSV(best_sol, outputPath)
-
+        _solve("steepest_two-nodes_random", self.random_ss, self.steepest, "nodes")
         # 6. steepest, two-nodes exchange, best greedy heuristic ss
-        algorithm = "steepest_two-nodes_best-heuristic"
-        solutions = []
-        evaluations = []
-        # Get solutions and evaluations
-        print(algorithm)
-        for startNode in tqdm(self.cities):
-            solutions.append(self.steepest_ls(startNode, self.best_greedy_heuristic_ss, "nodes"))
-            evaluations.append(self.getTotalDistance(solutions[-1]))
-        # Get and print stats
-        stats, best_sol_idx = self.calculateStats(evaluations)
-        print(stats)
-        # Save best solution
-        best_sol = solutions[best_sol_idx]
-        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
-        self.writeRouteToCSV(best_sol, outputPath)
-        
+        _solve("steepest_two-nodes_best-heuristic", self.best_greedy_heuristic_ss, self.steepest, "nodes")
         # 7. steepest, two-edges exchange, random ss
-        algorithm = "steepest_two-edges_random"
-        solutions = []
-        evaluations = []
-        # Get solutions and evaluations
-        print(algorithm)
-        for startNode in tqdm(self.cities):
-            solutions.append(self.steepest_ls(startNode, self.random_ss, "edges"))
-            evaluations.append(self.getTotalDistance(solutions[-1]))
-        # Get and print stats
-        stats, best_sol_idx = self.calculateStats(evaluations)
-        print(stats)
-        # Save best solution
-        best_sol = solutions[best_sol_idx]
-        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
-        self.writeRouteToCSV(best_sol, outputPath)
-
+        _solve("steepest_two-edges_random", self.random_ss, self.steepest, "edges")
         # 8. steepest, two-edges exchange, best greedy heuristic ss
-        algorithm = "steepest_two-edges_best-heuristic"
-        solutions = []
-        evaluations = []
-        # Get solutions and evaluations
-        print(algorithm)
-        for startNode in tqdm(self.cities):
-            solutions.append(self.steepest_ls(startNode, self.best_greedy_heuristic_ss, "edges"))
-            evaluations.append(self.getTotalDistance(solutions[-1]))
-        # Get and print stats
-        stats, best_sol_idx = self.calculateStats(evaluations)
-        print(stats)
-        # Save best solution
-        best_sol = solutions[best_sol_idx]
-        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
-        self.writeRouteToCSV(best_sol, outputPath)
+        _solve("steepest_two-edges_best-heuristic", self.best_greedy_heuristic_ss, self.steepest, "edges")
 
 
 if __name__ == "__main__":
@@ -374,7 +236,7 @@ if __name__ == "__main__":
 
     random.seed(123)
     for instancePath in sorted(glob(os.path.join(instancesPath, "*.csv"))):
-        heuristic_solver = Solver(instancePath, outputPath)
-        solver = Solver_LS(instancePath, outputPath, heuristic_solver)
+        heuristic_solver = Greedy_Regret(instancePath, outputPath)
+        solver = Local_Search(instancePath, outputPath, heuristic_solver)
         solver.solve()
         print()

@@ -1,4 +1,3 @@
-import csv
 import os
 import random
 from glob import glob
@@ -7,65 +6,21 @@ from copy import deepcopy
 import numpy as np
 from tqdm import tqdm
 
+import sys
+parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../"))
+sys.path.append(parent_dir)
+from lab3.solve import Local_Search
 
-class Solver_LS():
+
+class Dynamic_Local_Search(Local_Search):
     def __init__(self, instancePath, outputPath):
         self.instanceName, self.cities, self.costs, self.distances = self.readInstance(instancePath)
         self.outputPath = os.path.join(outputPath, self.instanceName)
         self.targetSolutionSize = round(len(self.cities) / 2)
-        
-        print(self.instanceName)
-        
-    def readInstance(self, instancePath : str):
-        instanceName = instancePath.split('/')[-1].split('.')[0]
-        
-        with open(instancePath, 'r') as f:
-            reader = csv.reader(f, delimiter=';')
-            data = np.array(list(reader)).astype(int)
-
-        cities = np.arange(data.shape[0])
-        costs = data[:, 2]
-        
-        coords = data[:, :2]
-        distances = np.sum((coords[:, None, :] - coords[None, :, :]) ** 2, axis=-1)
-        distances = np.sqrt(distances)
-        distances = np.round(distances).astype(int)
-        return instanceName, cities, costs, distances
-        
-    def getTotalEdgeCost(self, node_j, node_i):
-        return self.distances[node_i, node_j] + self.costs[node_j]
-        
-    def getTotalDistance(self, route):
-        total = 0
-        for i in range(len(route) - 1):
-            total += self.getTotalEdgeCost(route[i], route[i + 1])
-        # Return to the starting city
-        total += self.getTotalEdgeCost(route[-1], route[0])
-        return total
-
-    
-    ### Starting solutions
-    def random_ss(self, startNode):
-        return [startNode] + random.sample(list(set(self.cities) - {startNode}), self.targetSolutionSize - 1)
-
-    
-    ### Neighbouhoods
-    # Intra-route - Moves changing the order of nodes within the same set of selected nodes:
-    #     two-edges exchange;
-    def getDeltaIntraEdges(self, e1, e2):
-        return self.distances[e1[0], e2[0]] + self.distances[e1[1], e2[1]] \
-            - (self.distances[e1[0], e1[1]] + self.distances[e2[0], e2[1]])
-
-    # Inter-route - Moves changing the set of selected nodes:
-        # exchange of two nodes – one selected, one not selected;
-    def getDeltaInter(self, prev, curr, next, new):
-        return self.distances[prev, new] + self.distances[new, next] + self.costs[new] \
-            - (self.distances[prev, curr] + self.distances[curr, next] + self.costs[curr])
 
 
-    def steepest_ls(self, startNode, init_sol_f, intra_route_type):
-        # Generate initial solution
-        current_sol = init_sol_f(startNode)
+    def steepest(self, init_sol, intra_route_type):
+        current_sol = init_sol
 
         evaluatedMovesIntra = dict()
         evaluatedMovesInter = dict()
@@ -148,37 +103,31 @@ class Solver_LS():
                 better_found = True
         return current_sol
 
-    
-    def calculateStats(self, evaluations):
-        best_sol_idx = np.argmin(evaluations)
-        min_result = np.amin(evaluations)
-        avg_result = np.mean(evaluations)
-        max_result = np.amax(evaluations)
-        return f"{avg_result}({min_result} - {max_result})", best_sol_idx
-    
-    def writeRouteToCSV(self, route, outputPath):
-        with open(outputPath, 'w') as f:
-            write = csv.writer(f)
-            write.writerows(np.array(route)[:, np.newaxis])
 
     def solve(self):
-        # steepest, two-edges exchange, random ss
-        algorithm = "steepest_dynamic_two-edges_random"
-        solutions = []
-        evaluations = []
-        # Get solutions and evaluations
-        print(algorithm)
-        for startNode in tqdm(self.cities):
-            solutions.append(self.steepest_ls(startNode, self.random_ss, "edges"))
-            evaluations.append(self.getTotalDistance(solutions[-1]))
-        # Get and print stats
-        stats, best_sol_idx = self.calculateStats(evaluations)
-        print(stats)
-        # Save best solution
-        best_sol = solutions[best_sol_idx]
-        outputPath = os.path.join(self.outputPath, algorithm + ".csv")
-        self.writeRouteToCSV(best_sol, outputPath)
+        def _solve(algorithmName, init_sol_f, algorithm, intra_route_type):
+            solutions = []
+            evaluations = []
+            # Get solutions and evaluations
+            print(algorithmName)
+            for startNode in tqdm(self.cities):
+                # Generate initial solution
+                init_sol = init_sol_f(startNode)
+                
+                solutions.append(algorithm(init_sol, intra_route_type))
+                evaluations.append(self.getTotalDistance(solutions[-1]))
+            # Get and print stats
+            stats, best_sol_idx = self.calculateStatsFormatted(evaluations)
+            print(stats)
+            # Save best solution
+            best_sol = solutions[best_sol_idx]
+            outputPath = os.path.join(self.outputPath, algorithmName + ".csv")
+            self.writeRouteToCSV(best_sol, outputPath)
 
+        print(self.instanceName)
+        # steepest, two-edges exchange, random ss
+        _solve("steepest_dynamic_two-edges_random", self.random_ss, self.steepest, "edges")
+        
 
 if __name__ == "__main__":
     instancesPath = "../instances/"
@@ -186,6 +135,6 @@ if __name__ == "__main__":
 
     random.seed(123)
     for instancePath in sorted(glob(os.path.join(instancesPath, "*.csv"))):
-        solver = Solver_LS(instancePath, outputPath)
+        solver = Dynamic_Local_Search(instancePath, outputPath)
         solver.solve()
         print()
