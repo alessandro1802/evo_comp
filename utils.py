@@ -45,7 +45,7 @@ class Solver():
         min_result = np.amin(evaluations)
         avg_result = np.mean(evaluations)
         max_result = np.amax(evaluations)
-        return f"{avg_result}({min_result} - {max_result})", best_sol_idx
+        return f"{avg_result} ({min_result} - {max_result})", best_sol_idx
     
     def calculateStatsFormattedWithRuns(self, evaluations, runs):
         best_sol_idx = np.argmin(evaluations)
