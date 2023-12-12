@@ -39,7 +39,7 @@ class Large_Scale_Neighbourhood_search(Solver):
             new_sol = new_sol[:i] + new_sol[i+length:]
         return new_sol
     
-    # Repair the solution using the Greedy 2-regret heuristic
+    # Repair the solution using the weighted Greedy 2-regret heuristic
     def repair(self, sol):
         new_sol = self.greedy_solver.greedy_2_regret(sol, weights = [0.5, 0.5])
         return new_sol
