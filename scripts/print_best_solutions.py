@@ -1,9 +1,9 @@
 import csv
 
 
-solutionPaths = ["../lab6/solutions/TSPA/ils.csv", 
-                 "../lab6/solutions/TSPB/ils.csv", 
-                 "../lab6/solutions/TSPC/ils.csv", 
+solutionPaths = ["../lab7/solutions/TSPA/lsn_with_ls.csv", 
+                 "../lab7/solutions/TSPB/lsn_with_ls.csv", 
+                 "../lab7/solutions/TSPC/lsn_with_ls.csv", 
                  "../lab6/solutions/TSPD/ils.csv"]
 
 
