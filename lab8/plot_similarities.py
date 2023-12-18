@@ -14,11 +14,17 @@ outputPath =  os.path.join("./plots/")
 for instancePath in glob(os.path.join(similaritiesPath, "*")):
     instanceName = instancePath.split('/')[-1]
     # Read similarities
-    similarityNames, objectives, similarities = [], [], []
+    similarityNames, objectives, similarities, correlations = [], [], [], []
     for similaritiesPath in sorted(glob(os.path.join(instancePath, "*.csv"))):
-        similarityNames.append(similaritiesPath.split('/')[-1].split('.')[0])
-        
         sim = pd.read_csv(similaritiesPath)
+        
+        similarityName = similaritiesPath.split('/')[-1].split('.')[0]
+        correlation = sim['Objective'].corr(sim['Similarity'], method='pearson')
+        similarityNames.append(f"{similarityName} corr = {round(correlation, 2)}")
+        # Remove similarity of best to best (100%)
+        if "best" in similarityNames[-1]:
+            sim = sim[sim['Similarity'] != sim['Similarity'].max()]
+            
         objectives.append(sim['Objective'].to_numpy())
         similarities.append(sim['Similarity'].to_numpy())
     # Make plot
