@@ -25,12 +25,16 @@ class Similarity_Calculator(Solver):
 
     def getEdges(self, solution):
         tmp = np.roll(solution, -1)
-        return np.stack([solution, tmp]).T
+        return [list(edge) for edge in np.stack([solution, tmp]).T]
 
     
     # Number of common edges
     def similarityEdges(self, edges1, edges2):
-        return len([x for x in set(tuple(x) for x in edges1) & set(tuple(x) for x in edges2)])
+        # Calculate reversed edges
+        e1 = [[edge[1], edge[0]] for edge in edges1]
+        e1 += edges1
+        common = [edge for edge in edges2 if edge in e1]
+        return len(common)
 
     # Average number of common edges
     def similarityEdgesAvg(self, target_edges):
