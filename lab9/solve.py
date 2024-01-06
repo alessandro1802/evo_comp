@@ -31,38 +31,37 @@ class Hybrid_Evolutionary_alg(Solver):
         idx = np.random.choice(len(population), 2, replace=False)
         return population[idx[0]], population[idx[1]]
 
-    def constructOffspring(self, x, y):
-        # We locate in the offspring all common nodes and edges and fill the rest of the solution at random.
-        edges_x = [(x[i], x[i+1]) for i in range(len(x)-1)] + [(x[-1], x[0])]
-        edges_y = [(y[i], y[i+1]) for i in range(len(y)-1)] + [(y[-1], y[0])]
-        new_sol = [None] * len(x)
-
-        # find all common edges
-        common_edges = list(set(edges_x).intersection(set(edges_y)))
-        for edge in common_edges:
-            new_sol[x.index(edge[0])] = edge[0]
-            new_sol[x.index(edge[1])] = edge[1]
+    # Locate all common nodes and edges.
+    # Fill the rest of the solution at random.
+    def constructOffspring(self, x, y):   
+        child = [None for _ in range(len(x))]
         
-        # find all common edges 2
-        x1 = x[::-1]
-        edges_x1 = [(x1[i], x1[i+1]) for i in range(len(x)-1)] + [(x1[-1], x1[0])]
-        reversed_edges = list(set(edges_x1).intersection(set(edges_y)))
-        for edge in reversed_edges:
-            new_sol[x.index(edge[0])] = edge[0]
-            new_sol[x.index(edge[1])] = edge[1]
+        x_idx = {node: idx for idx, node in enumerate(x)}
+        y_idx = {node: idx for idx, node in enumerate(y)}
+        
+        tmp = np.roll(x, -1)
+        edges_x = [list(edge) for edge in np.stack([x, tmp]).T]
+        
+        tmp = np.roll(y, -1)
+        edges_y = [list(edge) for edge in np.stack([y, tmp]).T]
+        edges_y_rev = [[edge[1], edge[0]] for edge in edges_y]
+        edges_y += edges_y_rev
+        
+        for edge in edges_x:
+            if edge in edges_y:
+                child[x_idx[edge[0]]] = edge[0]
+                child[x_idx[edge[1]]] = edge[1]
+        
+        for node in x:
+            if node in y:
+                child[x_idx[node]] = node
 
-        # find all common nodes
-        common_nodes = list(set(x).intersection(set(y)))
-        for node in common_nodes:
-            new_sol[x.index(node)] = node
-
-        # fill the rest of the solution at random
-        not_selected = list(set(self.cities) - set(new_sol))
-        for i in range(len(new_sol)):
-            if new_sol[i] is None:
-                rand_id = np.random.randint(len(not_selected))
-                new_sol[i] = not_selected.pop(rand_id)
-        return new_sol
+        not_selected = list(set(self.cities) - set(child))
+        for i, node in enumerate(child):
+            if not node:
+                rand_idx = np.random.randint(len(not_selected))
+                child[i] = not_selected.pop(rand_idx)
+        return child
 
     def evolve(self, population, max_time_seconds, ls = False):
         fitnesses = [self.getTotalDistance(sol) for sol in population]
@@ -85,8 +84,8 @@ class Hybrid_Evolutionary_alg(Solver):
                     population[worstSolIdx] = child
                     fitnesses[worstSolIdx] = fitness
 
-        fitnesses = np.argmin(fitnesses)
-        return population[bestSolIdx], fitnesses[fitnesses], mainLoopRuns
+        bestSolIdx = np.argmin(fitnesses)
+        return population[bestSolIdx], fitnesses[bestSolIdx], mainLoopRuns
         
     
     def solve(self):
