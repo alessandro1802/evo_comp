@@ -31,9 +31,38 @@ class Hybrid_Evolutionary_alg(Solver):
         idx = np.random.choice(len(population), 2, replace=False)
         return population[idx[0]], population[idx[1]]
 
-    #TODO
-    def constructOffsring(self, x, y):
-        pass
+    def constructOffspring(self, x, y):
+        # We locate in the offspring all common nodes and edges and fill the rest of the solution at random.
+        edges_x = [(x[i], x[i+1]) for i in range(len(x)-1)] + [(x[-1], x[0])]
+        edges_y = [(y[i], y[i+1]) for i in range(len(y)-1)] + [(y[-1], y[0])]
+        new_sol = [None] * len(x)
+
+        # find all common edges
+        common_edges = list(set(edges_x).intersection(set(edges_y)))
+        for edge in common_edges:
+            new_sol[x.index(edge[0])] = edge[0]
+            new_sol[x.index(edge[1])] = edge[1]
+        
+        # find all common edges 2
+        x1 = x[::-1]
+        edges_x1 = [(x1[i], x1[i+1]) for i in range(len(x)-1)] + [(x1[-1], x1[0])]
+        reversed_edges = list(set(edges_x1).intersection(set(edges_y)))
+        for edge in reversed_edges:
+            new_sol[x.index(edge[0])] = edge[0]
+            new_sol[x.index(edge[1])] = edge[1]
+
+        # find all common nodes
+        common_nodes = list(set(x).intersection(set(y)))
+        for node in common_nodes:
+            new_sol[x.index(node)] = node
+
+        # fill the rest of the solution at random
+        not_selected = list(set(self.cities) - set(new_sol))
+        for i in range(len(new_sol)):
+            if new_sol[i] is None:
+                rand_id = np.random.randint(len(not_selected))
+                new_sol[i] = not_selected.pop(rand_id)
+        return new_sol
 
     def evolve(self, population, max_time_seconds, ls = False):
         fitnesses = [self.getTotalDistance(sol) for sol in population]
@@ -45,7 +74,7 @@ class Hybrid_Evolutionary_alg(Solver):
             mainLoopRuns += 1
 
             parent1, parent2 = self.parentSelection(population)
-            child = self.constructOffsring(parent1, parent2)
+            child = self.constructOffspring(parent1, parent2)
             if ls:
                 child = self.ls_solver.steepest(child, "edges")
                 
