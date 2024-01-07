@@ -4,7 +4,7 @@ import csv
 solutionPaths = ["../lab7/solutions/TSPA/lsn_with_ls.csv", 
                  "../lab7/solutions/TSPB/lsn_with_ls.csv", 
                  "../lab7/solutions/TSPC/lsn_with_ls.csv", 
-                 "../lab6/solutions/TSPD/ils.csv"]
+                 "../lab9/solutions/TSPD/hea_with_ls.csv"]
 
 
 for solPath in solutionPaths:
